@@ -44,6 +44,10 @@ namespace bd_pet
         /// 买入多线程列表
         /// </summary>
         private List<Thread> threadBuys = new List<Thread>();
+        /// <summary>
+        /// 忽略异常pedId
+        /// </summary>
+        private List<string> listPetId = new List<string>();
         private MainVM mainVM = new MainVM();
         private RSACryptoService rsa;
         public MainWindow()
@@ -153,170 +157,175 @@ namespace bd_pet
                     threadSale.IsBackground = true;
                     threadSale.Start();
                     #endregion
-                    if (mainVM.IsBuy)
+                }
+                if (mainVM.IsBuy)
+                {
+                    #region 买入
+                    threadBuy = new Thread(() =>
+                {
+                    try
                     {
-                        #region 买入
-                        threadBuy = new Thread(() =>
-                    {
-                        try
+                        for (int i = 0; i < 6; i++)
                         {
-                            for (int i = 0; i < 6; i++)
+                            Thread threadBuyOne = new Thread((obj) =>
                             {
-                                Thread threadBuyOne = new Thread((obj) =>
+                                int rareDegree = (int)obj;
+                                while (true)
                                 {
-                                    int rareDegree = (int)obj;
-                                    while (true)
+                                    try
                                     {
-                                        try
+                                        for (int i2 = 1; i2 <= 10; i2++)
                                         {
-                                            for (int i2 = 1; i2 <= 10; i2++)
+                                            lock (lockObj)
                                             {
-                                                lock (lockObj)
+                                                bool canBuy = false;
+                                                string jsonStr = GetBuyList(i2, rareDegree);
+                                                if (String.IsNullOrEmpty(jsonStr))
+                                                    continue;
+                                                var jsonData = JObject.Parse(jsonStr);
+                                                if (jsonData["errorNo"].Value<String>() == "00")
                                                 {
-                                                    bool canBuy = false;
-                                                    string jsonStr = GetBuyList(i2, rareDegree);
-                                                    if (String.IsNullOrEmpty(jsonStr))
-                                                        continue;
-                                                    var jsonData = JObject.Parse(jsonStr);
-                                                    if (jsonData["errorNo"].Value<String>() == "00")
+                                                    var saleList = jsonData["data"]["petsOnSale"].Values<JObject>();
+                                                    foreach (var item in saleList)
                                                     {
-                                                        var saleList = jsonData["data"]["petsOnSale"].Values<JObject>();
-                                                        foreach (var item in saleList)
+                                                        var petId = item["petId"].Value<string>();
+                                                        if (listPetId.Exists(m => m == petId))
+                                                            continue;
+                                                        if (listPetId.Count > 1000)
+                                                            listPetId.Remove(listPetId.First());
+                                                        string result = "";
+                                                        switch (item["rareDegree"].Value<int>())
                                                         {
-                                                            string result = "";
-                                                            switch (item["rareDegree"].Value<int>())
-                                                            {
-                                                                case 0:
-                                                                    {
-                                                                        if (mainVM.CommonBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            this.Dispatcher.Invoke(new Action(() =>
-                                                                            {
-                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                            }));
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                                case 1:
-                                                                    {
-                                                                        if (mainVM.RareBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            this.Dispatcher.Invoke(new Action(() =>
-                                                                            {
-                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                            }));
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                                case 2:
-                                                                    {
-                                                                        if (mainVM.ExcellenceBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            this.Dispatcher.Invoke(new Action(() =>
-                                                                            {
-                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                            }));
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                                case 3:
-                                                                    {
-                                                                        if (mainVM.EpicBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            this.Dispatcher.Invoke(new Action(() =>
-                                                                            {
-                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                            }));
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                                case 4:
-                                                                    {
-                                                                        if (mainVM.MythicalBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            if (!String.IsNullOrEmpty(result))
-                                                                            {
-                                                                                this.Dispatcher.Invoke(new Action(() =>
-                                                                                {
-                                                                                    mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                                }));
-                                                                            }
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                                case 5:
-                                                                    {
-                                                                        if (mainVM.LegendBuy >= item["amount"].Value<double>())
-                                                                        {
-                                                                            canBuy = true;
-                                                                            if (!String.IsNullOrEmpty(result))
-                                                                            {
-                                                                                this.Dispatcher.Invoke(new Action(() =>
-                                                                                {
-                                                                                    mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
-                                                                                }));
-                                                                            }
-                                                                            result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
-                                                                        }
-                                                                    }
-                                                                    break;
-                                                            }
-                                                            if (!String.IsNullOrEmpty(result))
-                                                            {
-                                                                this.Dispatcher.Invoke(new Action(() =>
+                                                            case 0:
                                                                 {
-                                                                    if (mainVM.LogMsg.Count > 1000)
-                                                                        mainVM.LogMsg.Clear();
-                                                                    mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "买入:" + result });
-                                                                }));
-                                                            }
+                                                                    if (mainVM.CommonBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        this.Dispatcher.Invoke(new Action(() =>
+                                                                        {
+                                                                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                        }));
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                            case 1:
+                                                                {
+                                                                    if (mainVM.RareBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        this.Dispatcher.Invoke(new Action(() =>
+                                                                        {
+                                                                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                        }));
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                            case 2:
+                                                                {
+                                                                    if (mainVM.ExcellenceBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        this.Dispatcher.Invoke(new Action(() =>
+                                                                        {
+                                                                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                        }));
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                            case 3:
+                                                                {
+                                                                    if (mainVM.EpicBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        this.Dispatcher.Invoke(new Action(() =>
+                                                                        {
+                                                                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                        }));
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                            case 4:
+                                                                {
+                                                                    if (mainVM.MythicalBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        if (!String.IsNullOrEmpty(result))
+                                                                        {
+                                                                            this.Dispatcher.Invoke(new Action(() =>
+                                                                            {
+                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                            }));
+                                                                        }
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                            case 5:
+                                                                {
+                                                                    if (mainVM.LegendBuy >= item["amount"].Value<double>())
+                                                                    {
+                                                                        canBuy = true;
+                                                                        if (!String.IsNullOrEmpty(result))
+                                                                        {
+                                                                            this.Dispatcher.Invoke(new Action(() =>
+                                                                            {
+                                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "尝试买入:" + item["petId"].Value<string>() + ",价格" + item["amount"].Value<string>() + ",稀有度:" + item["rareDegree"].Value<int>() });
+                                                                            }));
+                                                                        }
+                                                                        result = Buy(item["petId"].Value<string>(), item["amount"].Value<string>());
+                                                                    }
+                                                                }
+                                                                break;
+                                                        }
+                                                        if (!String.IsNullOrEmpty(result))
+                                                        {
+                                                            this.Dispatcher.Invoke(new Action(() =>
+                                                            {
+                                                                if (mainVM.LogMsg.Count > 1000)
+                                                                    mainVM.LogMsg.Clear();
+                                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "买入:" + result });
+                                                            }));
                                                         }
                                                     }
-                                                    if (canBuy == false)
-                                                    {
-                                                        break;
-                                                    }
-                                                    Thread.Sleep(300);
                                                 }
+                                                if (canBuy == false)
+                                                {
+                                                    break;
+                                                }
+                                                Thread.Sleep(300);
                                             }
                                         }
-                                        catch (Exception ex)
-                                        {
-                                            this.Dispatcher.Invoke(new Action(() =>
-                                            {
-                                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "错误:" + ex.ToString() });
-                                            }));
-                                        }
-                                        Thread.Sleep(200);
                                     }
-                                });
-                                threadBuyOne.IsBackground = true;
-                                threadBuyOne.Start(i);
-                                threadBuys.Add(threadBuyOne);
-                            }
+                                    catch (Exception ex)
+                                    {
+                                        this.Dispatcher.Invoke(new Action(() =>
+                                        {
+                                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "错误:" + ex.ToString() });
+                                        }));
+                                    }
+                                    Thread.Sleep(200);
+                                }
+                            });
+                            threadBuyOne.IsBackground = true;
+                            threadBuyOne.Start(i);
+                            threadBuys.Add(threadBuyOne);
                         }
-                        catch (Exception ex)
-                        {
-                            this.Dispatcher.Invoke(new Action(() =>
-                            {
-                                mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "错误:" + ex.ToString() });
-                            }));
-                        }
-                    });
-                        threadBuy.IsBackground = true;
-                        threadBuy.Start();
-                        #endregion
                     }
+                    catch (Exception ex)
+                    {
+                        this.Dispatcher.Invoke(new Action(() =>
+                        {
+                            mainVM.LogMsg.Insert(0, new LogMsgItem() { Message = "错误:" + ex.ToString() });
+                        }));
+                    }
+                });
+                    threadBuy.IsBackground = true;
+                    threadBuy.Start();
+                    #endregion
                 }
             }
             else
@@ -644,6 +653,7 @@ namespace bd_pet
                     }
                     else
                     {
+                        listPetId.Add(petid);
                         PostMoths(new Uri(mainVM.ApiUrl + "bd_server/save_code"),
                             JsonConvert.SerializeObject(new
                             {
